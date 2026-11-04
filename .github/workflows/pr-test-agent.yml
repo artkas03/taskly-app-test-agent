@@ -132,6 +132,13 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           bwrap --ro-bind / / --dev /dev --proc /proc --unshare-pid true
+          # The isolation creates empty placeholders for missing files such as package.json in the
+          # working directory, and an empty root package.json makes Vite fail to load
+          # frontend/vite.config.ts. A valid one, excluded from git, keeps the frontend runnable.
+          if [ ! -e package.json ]; then
+            printf '{\n  "private": true\n}\n' > package.json
+            echo '/package.json' >> .git/info/exclude
+          fi
       - name: Run unit-test-engineer agent
         id: agent
         continue-on-error: true

@@ -111,6 +111,8 @@ New frontend tests cover `lib/http`, all TanStack Query hooks, `utils/todos` (va
 - When a source file is deleted, the agent reports it but cannot delete the tests that still import it.
 - Prompt injection is reduced by several measures: the prompt tells the agent to treat code and diffs as data, contains no PR text, the tools are allow-listed, the configuration is pinned to the base branch, subprocesses run without credentials, the output goes through the policy gate, and the comment is escaped. No setup can fully exclude it for an LLM.
 - Network egress from the `generate` job is not restricted. A prompt-injected test cannot read the credentials, but it could still send repository content out; the repository is public, so this exposes nothing new.
+- On `pull_request`, GitHub runs the workflow file from the PR itself, so a collaborator could change the workflow in their PR. The pipeline scripts and agent configuration are pinned to the base branch, but the YAML is not. This is acceptable only because PR authors already have write access (see Assumptions).
+- Subprocess isolation creates empty placeholder files (for example `package.json`) in the working directory when they are missing. The workflow creates a valid root `package.json`, excluded from git, before the agent runs, because an empty one stops Vite from loading the frontend config.
 - `npm ci` in `generate` and `verify` runs install scripts from the PR's lockfile. This is acceptable because PR authors are collaborators (see Assumptions), and those steps have no secrets.
 
 ## 7. Changes for a production version
