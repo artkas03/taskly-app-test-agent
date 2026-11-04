@@ -153,6 +153,69 @@
           }
         }
       }
+    },
+    "/api/todos/stats": {
+      "get": {
+        "summary": "Task statistics",
+        "parameters": [
+          {
+            "name": "today",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Calendar date used to detect overdue tasks (defaults to the server's UTC date)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated task counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer"
+                    },
+                    "active": {
+                      "type": "integer"
+                    },
+                    "completed": {
+                      "type": "integer"
+                    },
+                    "overdue": {
+                      "type": "integer"
+                    },
+                    "completionRate": {
+                      "type": "integer"
+                    },
+                    "byPriority": {
+                      "type": "object",
+                      "properties": {
+                        "low": {
+                          "type": "integer"
+                        },
+                        "medium": {
+                          "type": "integer"
+                        },
+                        "high": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid query"
+          }
+        }
+      }
     }
   },
   "components": {
