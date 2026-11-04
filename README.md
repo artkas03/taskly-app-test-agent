@@ -134,3 +134,8 @@ Coverage — `backend/coverage/index.html`:
 ```sh
 npm run test:coverage
 ```
+
+## Unit Test Agent
+
+A custom Claude Code agent writes or updates unit tests for the code changed in each pull request,
+runs them and reports the result in the PR. Setup and design decisions are in [SOLUTION.md](SOLUTION.md).
