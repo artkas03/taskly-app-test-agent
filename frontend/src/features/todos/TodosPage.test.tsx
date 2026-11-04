@@ -145,6 +145,13 @@ it('displays a query failure and resets mutation errors before retrying', async 
   )
 })
 
+it('shows statistics for the loaded tasks', () => {
+  setupPage()
+  expect(
+    screen.getByRole('region', { name: 'Task statistics' }),
+  ).toHaveTextContent('0 of 1 done (0%)')
+})
+
 it('shows no alert when nothing failed', () => {
   setupPage()
   expect(screen.queryByTestId('alert')).not.toBeInTheDocument()
