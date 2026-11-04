@@ -74,13 +74,52 @@ One PR run goes through four jobs:
 
 ## 4. Example run
 
-Demo PR: "feat: task statistics" in this repository, with its workflow run.
+Demo: [PR #1](https://github.com/artkas03/taskly-app-test-agent/pull/1). Commit `8f285ab` adds a task statistics feature with no tests:
+- backend: `summarizeTodos` in the new `src/features/todos/stats.ts`, the route `GET /api/todos/stats` in `router.ts`, and `statsQuerySchema` for its `?today=` parameter in `validators.ts`;
+- frontend: `summarizeTodos` in the new `features/todos/utils/stats.ts`, a new `TodoStats` component, and one line in `TodosPage.tsx` that renders it.
 
-The PR adds these files with no tests:
-- backend: `src/features/todos/stats.ts` (`summarizeTodos`) and the route `GET /api/todos/stats` in `router.ts`;
-- frontend: `summarizeTodos` in `features/todos/utils/stats.ts` and a `TodoStats` component rendered by `TodosPage`.
+The PR has had two agent runs. The "Unit Test Agent" comment on the PR is updated in place and shows the latest one.
 
-The "Unit Test Agent" comment on the demo PR shows what happened in the run: the agent's decision for each file (`create` for the new modules, `update` for `router.ts` and `TodosPage.tsx`), the skills it used, the verification table (typecheck, tests, coverage before and after) and the commit with the generated tests.
+### First run ([workflow run](https://github.com/artkas03/taskly-app-test-agent/actions/runs/41847727731), test commit `ab691df`)
+
+`analyze` put six source files in scope and skipped `openapi.json`. The agent used all five skills and decided:
+
+| Source | Decision | Reason given by the agent |
+|---|---|---|
+| `frontend/.../utils/stats.ts` | create | new function with empty-list, rounding and overdue logic |
+| `frontend/.../components/TodoStats.tsx` | create | empty branch and a conditional overdue badge |
+| `frontend/.../TodosPage.tsx` | skip | only adds an unconditional `TodoStats` element, covered by its own test |
+| `backend/.../stats.ts` | create | aggregation with overdue, priority and rate logic |
+| `backend/.../router.ts` | update | new `/stats` route with query validation and a default date |
+| `backend/.../validators.ts` | update | `statsQuerySchema` must keep the file at its 100% coverage threshold |
+
+It wrote 14 test cases in five files. The router tests check that `/stats` is not parsed as a task id, that the server's UTC date is used when `?today=` is missing, and that invalid queries return 422 without reading tasks.
+
+The `verify` job then reported:
+
+| Package | Typecheck | Tests | New tests repeated | Line coverage |
+|---|---|---|---|---|
+| frontend | passed | 100 passed | 5 of 5 | 97.5% → 97.5% |
+| backend | passed | 109 passed | 5 of 5 | 89.5% → 100% |
+
+Backend `stats.ts` went from 0% to 100% and `router.ts` from 86.7% to 100%. Frontend coverage did not change because the existing `TodosPage` tests already render the real `TodoStats`, so its lines were executed before; the new tests add the assertions.
+
+The run also exposed a problem in the pipeline. The agent could not run the frontend tests itself: under subprocess isolation, Claude Code creates empty placeholder files for missing names such as `package.json`, and an empty root `package.json` stops Vite from loading `frontend/vite.config.ts`. The agent left the file alone and listed the problem in its warnings. The tests were still verified, because `verify` runs without that isolation. Commit `ff35b07` on `main` fixes it: the workflow now creates a valid root `package.json`, excluded from git, before starting the agent.
+
+### Second run after merging the fix ([workflow run](https://github.com/artkas03/taskly-app-test-agent/actions/runs/41849356063), test commit `084e37e`)
+
+The agent found the tests from the first run, marked five files `skip` with a reason for each, and changed its decision for `TodosPage.tsx` to `update`: no test checked that the page shows the statistics. It added one test:
+
+```ts
+it('shows statistics for the loaded tasks', () => {
+  setupPage()
+  expect(screen.getByRole('region', { name: 'Task statistics' })).toHaveTextContent('0 of 1 done (0%)')
+})
+```
+
+This time the agent ran the frontend tests itself and reported no warnings. `verify` reported 101 frontend and 109 backend tests passing, and the new test passed 5 of 5 repeated runs. The comment flags `TodosPage.tsx` because its line coverage stayed at 96.2%. That is expected here, since the test adds an assertion on lines that were already executed. Meta's TestGen-LLM would drop such a test; this pipeline keeps it and leaves the decision to the reviewer.
+
+The two bot commits did not start new workflow runs: GitHub marks runs triggered by `GITHUB_TOKEN` pushes as `action_required`, and the agent workflow skips bot senders anyway.
 
 ### Initial coverage pass (part 1 of the task)
 
